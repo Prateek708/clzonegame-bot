@@ -7,7 +7,6 @@ const bot = new TelegramBot(token, { polling: true });
 const users = {}; 
 const activeMines = {};
 const activeNG = {}; 
-const multipliers = [0.99, 1.3, 1.8, 1.131, 2.5, 4.0, 8.0];
 
 function initUser(id, name) {
     if (!users[id]) {
@@ -15,33 +14,50 @@ function initUser(id, name) {
     }
 }
 
-// --- WELCOME UI ---
+// --- WELCOME ---
 bot.onText(/\/start(?:@\w+)?/, (msg) => {
     initUser(msg.from.id, msg.from.first_name);
     const text = `🎮 *Welcome to CL Zone Bot!* 🎮\n\n` +
-                 `🎁 Thanks for starting! Your reward: 2000 Coins 🎁\n\n` +
-                 `🔹 /profile - View status & coins\n` +
-                 `🔹 /daily - Claim 500 Coins\n` +
-                 `🔹 /leaderboard - View Top players\n\n` +
-                 `🎮 *Games Available:*\n` +
-                 `💣 /mines <amount> [bombs]\n` +
-                 `🔢 /numberguess - Play Number Guess\n` +
-                 `🎲 /dice <amount>\n` +
-                 `🪙 /flip <heads/tails> <amount>`;
+                 `Commands:\n/profile, /daily, /spin, /leaderboard\n\n` +
+                 `Games:\n💣 /mines <amt> <bombs>\n🎲 /dice\n🪙 /flip\n🔢 /numberguess`;
     bot.sendMessage(msg.chat.id, text, { parse_mode: "Markdown" });
 });
 
-// --- LEADERBOARD ---
-bot.onText(/\/leaderboard(?:@\w+)?/, (msg) => {
-    const sorted = Object.entries(users)
-        .sort((a, b) => b[1].coins - a[1].coins)
-        .slice(0, 15)
-        .map((u, i) => `${i + 1}. ${u[1].name}: ${u[1].coins} 💰`)
-        .join("\n");
-    bot.sendMessage(msg.chat.id, `🏆 *Top 15 Players:*\n${sorted || "No players yet."}`);
+// --- PROFILE, DAILY, SPIN ---
+bot.onText(/\/profile(?:@\w+)?/, (msg) => {
+    const u = users[msg.from.id];
+    bot.sendMessage(msg.chat.id, `👤 ${u.name}\n💰 Coins: ${u.coins}`);
 });
 
-// --- NUMBER GUESSING ---
+bot.onText(/\/daily(?:@\w+)?/, (msg) => {
+    initUser(msg.from.id, msg.from.first_name);
+    users[msg.from.id].coins += 500;
+    bot.sendMessage(msg.chat.id, "🎁 You claimed 500 coins!");
+});
+
+bot.onText(/\/spin(?:@\w+)?/, (msg) => {
+    const id = msg.from.id;
+    initUser(id, msg.from.first_name);
+    const win = Math.floor(Math.random() * 9000) + 1000;
+    users[id].coins += win;
+    bot.sendMessage(msg.chat.id, `🎉 *Spin Wheel Result!* 🎉\n\n🎡 Stopped at: ${win} Tokens!\n💰 Total Coins: ${users[id].coins}`, { parse_mode: "Markdown" });
+});
+
+bot.onText(/\/leaderboard(?:@\w+)?/, (msg) => {
+    const sorted = Object.entries(users).sort((a, b) => b[1].coins - a[1].coins).slice(0, 10)
+        .map((u, i) => `${i + 1}. ${u[1].name}: ${u[1].coins} 💰`).join("\n");
+    bot.sendMessage(msg.chat.id, `🏆 *Top Players:*\n${sorted || "No players yet."}`);
+});
+
+// --- DICE, FLIP, NG ---
+bot.onText(/\/dice(?:@\w+)?/, (msg) => {
+    bot.sendMessage(msg.chat.id, `🎲 *Dice rolled:* ${Math.floor(Math.random() * 6) + 1}`);
+});
+
+bot.onText(/\/flip(?:@\w+)?/, (msg) => {
+    bot.sendMessage(msg.chat.id, `🪙 *Coin Flip:* ${Math.random() < 0.5 ? "Heads" : "Tails"}`);
+});
+
 bot.onText(/\/numberguess(?:@\w+)?/, (msg) => {
     activeNG[msg.from.id] = Math.floor(Math.random() * 100) + 1;
     bot.sendMessage(msg.chat.id, "🔢 *Guess a number (1-100)!* Use /ng <number>");
@@ -49,74 +65,49 @@ bot.onText(/\/numberguess(?:@\w+)?/, (msg) => {
 
 bot.onText(/\/ng(?:@\w+)?\s+(\d+)/, (msg, match) => {
     const guess = parseInt(match[1]);
-    const secret = activeNG[msg.from.id];
-    if (!secret) return bot.sendMessage(msg.chat.id, "❌ Start with /numberguess first.");
-    if (guess === secret) {
+    if (!activeNG[msg.from.id]) return bot.sendMessage(msg.chat.id, "❌ Start with /numberguess first.");
+    if (guess === activeNG[msg.from.id]) {
         users[msg.from.id].coins += 1000;
+        bot.sendMessage(msg.chat.id, "🎉 *Correct!* Won 1000 coins.");
         delete activeNG[msg.from.id];
-        bot.sendMessage(msg.chat.id, "🎉 *Correct!* You won 1000 coins.");
     } else {
-        bot.sendMessage(msg.chat.id, guess < secret ? "Too low! ⬆️" : "Too high! ⬇️");
+        bot.sendMessage(msg.chat.id, guess < activeNG[msg.from.id] ? "Too low! ⬆️" : "Too high! ⬇️");
     }
 });
 
-// --- MINES LOGIC ---
+// --- MINES GRID ---
 bot.onText(/\/mines(?:@\w+)?(?:\s+(\d+))?(?:\s+(\d+))?/, (msg, match) => {
     const id = msg.from.id;
     const bet = parseInt(match[1]);
-    const bombCount = parseInt(match[2]) || 3;
+    const bombs = parseInt(match[2]) || 3;
     initUser(id, msg.from.first_name);
-
-    if (!bet || bet < 100 || bet > 10000) return bot.sendMessage(msg.chat.id, "⚠️ Limit: 100-10,000.");
-    if (users[id].coins < bet) return bot.sendMessage(msg.chat.id, "❌ Not enough coins.");
-
-    let mines = [];
-    while(mines.length < bombCount) {
-        let r = Math.floor(Math.random() * 25);
-        if(!mines.includes(r)) mines.push(r);
+    if (!bet || bet < 100) return bot.sendMessage(msg.chat.id, "⚠️ Min bet: 100.");
+    
+    let keyboard = [];
+    for (let i = 0; i < 5; i++) {
+        let row = [];
+        for (let j = 0; j < 5; j++) row.push({ text: "⬜", callback_data: `pick_${i * 5 + j}` });
+        keyboard.push(row);
     }
-    activeMines[id] = { bet, mines, step: 0 };
-    bot.sendMessage(msg.chat.id, `💣 *Mines Game Started!*\nBet: ${bet} | Bombs: ${bombCount}\nUse /pick <0-24>`);
+    activeMines[id] = { bet, mines: Array.from({length: bombs}, () => Math.floor(Math.random()*25)), step: 0 };
+    bot.sendMessage(msg.chat.id, `💣 *Mines (Bet: ${bet}, Bombs: ${bombs})*\nClick a button:`, { reply_markup: { inline_keyboard: keyboard } });
 });
 
-bot.onText(/\/pick(?:@\w+)?\s+(\d+)/, (msg, match) => {
-    const id = msg.from.id;
+bot.on('callback_query', (query) => {
+    if (!query.data.startsWith('pick_')) return;
+    const id = query.from.id;
+    const pos = parseInt(query.data.split('_')[1]);
     const game = activeMines[id];
-    if (!game) return bot.sendMessage(msg.chat.id, "❌ No active game.");
-    
-    const pos = parseInt(match[1]);
+    if (!game) return bot.answerCallbackQuery(query.id, { text: "Game expired!" });
+
     if (game.mines.includes(pos)) {
         users[id].coins -= game.bet;
         delete activeMines[id];
-        bot.sendMessage(msg.chat.id, `💥 *BOOM!* Mine hit. You lost ${game.bet} coins.`);
+        bot.editMessageText("💥 *BOOM!* Game Over.", { chat_id: query.message.chat.id, message_id: query.message.message_id });
     } else {
-        const cur = multipliers[game.step] || 3.0;
         game.step++;
-        bot.sendMessage(msg.chat.id, `✅ *Safe Spot!* Multiplier: ${cur}x\n/pick <0-24> or /cashout.`);
+        bot.editMessageText(`✅ *Safe!* Mult: ${1.3 + (game.step * 0.5)}x\nKeep picking!`, { chat_id: query.message.chat.id, message_id: query.message.message_id });
     }
-});
-
-bot.onText(/\/cashout(?:@\w+)?/, (msg) => {
-    const id = msg.from.id;
-    const game = activeMines[id];
-    if (!game) return bot.sendMessage(msg.chat.id, "❌ No active game.");
-    const win = Math.floor(game.bet * (multipliers[game.step - 1] || 1.0));
-    users[id].coins += (win - game.bet);
-    delete activeMines[id];
-    bot.sendMessage(msg.chat.id, `💰 *Cashed out!* Won: ${win} coins.`);
-});
-
-// --- PROFILE & DAILY ---
-bot.onText(/\/profile(?:@\w+)?/, (msg) => {
-    const u = users[msg.from.id];
-    if (!u) return bot.sendMessage(msg.chat.id, "Use /start first.");
-    bot.sendMessage(msg.chat.id, `👤 ${u.name}\n💰 Coins: ${u.coins}\n✅ Wins: ${u.wins}\n❌ Losses: ${u.losses}`);
-});
-
-bot.onText(/\/daily(?:@\w+)?/, (msg) => {
-    initUser(msg.from.id, msg.from.first_name);
-    users[msg.from.id].coins += 500;
-    bot.sendMessage(msg.chat.id, "🎁 You claimed 500 coins!");
 });
 
 http.createServer((req, res) => res.end('Bot is running')).listen(process.env.PORT || 3000);
