@@ -1,4 +1,4 @@
-Const TelegramBot = require("node-telegram-bot-api");
+const TelegramBot = require("node-telegram-bot-api");
 const http = require('http');
 
 const token = process.env.BOT_TOKEN;
@@ -37,21 +37,21 @@ bot.onText(/\/start/, (msg) => {
   
   const isNew = initUser(userId, firstName);
 
-  let welcomeText = 🎮 *Welcome to CL Zone Bot!* 🎮\n\n;
+  let welcomeText = `🎮 *Welcome to CL Zone Bot!* 🎮\n\n`;
   if (isNew) {
-    welcomeText += 🎁 *Thanks for starting! Your reward: 2000 Coins* 🎁\n\n;
+    welcomeText += `🎁 *Thanks for starting! Your reward: 2000 Coins* 🎁\n\n`;
   }
 
-  welcomeText += Use these commands to play:\n +
-                 🔹 /profile - View status & coins\n +
-                 🔹 /daily - Claim 1000 Coins (24h)\n +
-                 🔹 /spin - Spin for 1k-10k coins (24h)\n +
-                 🔹 /leaderboard - View Top 15 players\n\n +
-                 🎮 *Games Available:* \n +
-                 🎲 /dice <amount> (Limit: 100-20k)\n +
-                 🪙 /flip <heads/tails> <amount> (Limit: 100-30k)\n +
-                 🔢 /numberguess - Start Number Guessing Game\n +
-                 👉 /ng <number> - Make your guess (1-100);
+  welcomeText += `Use these commands to play:\n` +
+                 `🔹 /profile - View status & coins\n` +
+                 `🔹 /daily - Claim 1000 Coins (24h)\n` +
+                 `🔹 /spin - Spin for 1k-10k coins (24h)\n` +
+                 `🔹 /leaderboard - View Top 15 players\n\n` +
+                 `🎮 *Games Available:* \n` +
+                 `🎲 /dice <amount> (Limit: 100-20k)\n` +
+                 `🪙 /flip <heads/tails> <amount> (Limit: 100-30k)\n` +
+                 `🔢 /numberguess - Start Number Guessing Game\n` +
+                 `👉 /ng <number> - Make your guess (1-100)`;
 
   bot.sendMessage(chatId, welcomeText, { parse_mode: "Markdown" });
 });
@@ -64,16 +64,16 @@ bot.onText(/\/profile/, (msg) => {
   const userId = msg.from.id;
 
   if (!users[userId]) {
-    return bot.sendMessage(chatId, ❌ *Access Denied!*\nPlease /start the bot first., { parse_mode: "Markdown" });
+    return bot.sendMessage(chatId, `❌ *Access Denied!*\nPlease /start the bot first.`, { parse_mode: "Markdown" });
   }
 
   const user = users[userId];
-  const profileText = 👤 *YOUR GAME PROFILE* 👤\n\n +
-                      📝 *Name:* ${user.name}\n +
-                      💰 *Total Coins:* ${user.coins} CL Tokens\n +
-                      ✅ *Total Wins:* ${user.wins}\n +
-                      ❌ *Total Losses:* ${user.losses}\n +
-                      🆔 *User ID:* \${userId}\``;
+  const profileText = `👤 *YOUR GAME PROFILE* 👤\n\n` +
+                      `📝 *Name:* ${user.name}\n` +
+                      `💰 *Total Coins:* ${user.coins} CL Tokens\n` +
+                      `✅ *Total Wins:* ${user.wins}\n` +
+                      `❌ *Total Losses:* ${user.losses}\n` +
+                      `🆔 *User ID:* \`${userId}\``;
 
   bot.sendMessage(chatId, profileText, { parse_mode: "Markdown" });
 });
@@ -82,7 +82,7 @@ bot.onText(/\/daily/, (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
 
-  if (!users[userId]) return bot.sendMessage(chatId, ❌ Please /start first.);
+  if (!users[userId]) return bot.sendMessage(chatId, `❌ Please /start first.`);
 
   const user = users[userId];
   const now = Date.now();
@@ -92,11 +92,11 @@ bot.onText(/\/daily/, (msg) => {
     const remaining = cooldown - (now - user.lastClaim);
     const hours = Math.floor(remaining / (1000 * 60 * 60));
     const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
-    bot.sendMessage(chatId, ❌ *Cooldown active!*\n⏳ Wait *${hours}h ${minutes}m*., { parse_mode: "Markdown" });
+    bot.sendMessage(chatId, `❌ *Cooldown active!*\n⏳ Wait *${hours}h ${minutes}m*.`, { parse_mode: "Markdown" });
   } else {
     user.coins += 1000;
     user.lastClaim = now;
-    bot.sendMessage(chatId, 🎁 *Daily Reward:* Received *1000 Coins*.\n💰 Total: *${user.coins}*, { parse_mode: "Markdown" });
+    bot.sendMessage(chatId, `🎁 *Daily Reward:* Received *1000 Coins*.\n💰 Total: *${user.coins}*`, { parse_mode: "Markdown" });
   }
 });
 
@@ -104,19 +104,17 @@ bot.onText(/\/spin/, (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
 
-  if (!users[userId]) return bot.sendMessage(chatId, ❌ Please /start first.);
+  if (!users[userId]) return bot.sendMessage(chatId, `❌ Please /start first.`);
 
   const user = users[userId];
   const now = Date.now();
   const cooldown = 24 * 60 * 60 * 1000;
 
   if (user.lastSpin && (now - user.lastSpin < cooldown)) {
-
-const remaining = cooldown - (now - user.lastSpin);
-
-const hours = Math.floor(remaining / (1000 * 60 * 60));
+    const remaining = cooldown - (now - user.lastSpin);
+    const hours = Math.floor(remaining / (1000 * 60 * 60));
     const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
-    bot.sendMessage(chatId, ❌ *Wheel is cooling down!*\n⏳ Wait *${hours}h ${minutes}m*., { parse_mode: "Markdown" });
+    bot.sendMessage(chatId, `❌ *Wheel is cooling down!*\n⏳ Wait *${hours}h ${minutes}m*.`, { parse_mode: "Markdown" });
   } else {
     bot.sendMessage(chatId, "🎡 *Spinning the Wheel...* 🔄").then((sentMsg) => {
       setTimeout(() => {
@@ -127,7 +125,7 @@ const hours = Math.floor(remaining / (1000 * 60 * 60));
         user.wins += 1; 
         user.lastSpin = now; 
 
-        bot.editMessageText(🎉 *Spin Wheel Result!* 🎉\n\n🎡 Stopped at: *${wonAmount} Tokens*!\n💰 Total Coins: *${user.coins}*, {
+        bot.editMessageText(`🎉 *Spin Wheel Result!* 🎉\n\n🎡 Stopped at: *${wonAmount} Tokens*!\n💰 Total Coins: *${user.coins}*`, {
           chat_id: chatId,
           message_id: sentMsg.message_id,
           parse_mode: "Markdown"
@@ -144,13 +142,13 @@ bot.onText(/\/leaderboard/, (msg) => {
     .sort((a, b) => b.coins - a.coins)
     .slice(0, 15); 
 
-  let leaderboardText = 🌎 *TOP 15 -- COINS* 🪙\n\n;
+  let leaderboardText = `🌎 *TOP 15 -- COINS* 🪙\n\n`;
   sortedPlayers.forEach((player, index) => {
-    let medal = ${index + 1}.;
+    let medal = `${index + 1}.`;
     if (index === 0) medal = "🥇";
     if (index === 1) medal = "🥈";
     if (index === 2) medal = "🥉";
-    leaderboardText += ${medal} *${player.name}* - ${player.coins} 🪙\n;
+    leaderboardText += `${medal} *${player.name}* - ${player.coins} 🪙\n`;
   });
   if (sortedPlayers.length === 0) leaderboardText += "No data available yet.";
   bot.sendMessage(chatId, leaderboardText, { parse_mode: "Markdown" });
@@ -175,11 +173,11 @@ bot.onText(/\/dice (\d+)/, (msg, match) => {
   if (roll >= 4) {
     user.coins += amount;
     user.wins += 1;
-    bot.sendMessage(chatId, 🎲 *Dice Roll:* ${roll}\n\n🎉 *WIN!* You doubled your bet.\n💰 Added: *${amount}* coins.\nBalance: *${user.coins}*, { parse_mode: "Markdown" });
+    bot.sendMessage(chatId, `🎲 *Dice Roll:* ${roll}\n\n🎉 *WIN!* You doubled your bet.\n💰 Added: *${amount}* coins.\nBalance: *${user.coins}*`, { parse_mode: "Markdown" });
   } else {
     user.coins -= amount;
     user.losses += 1;
-    bot.sendMessage(chatId, 🎲 *Dice Roll:* ${roll}\n\n❌ *LOSS!* You lost your bet.\n📉 Deducted: *${amount}* coins.\nBalance: *${user.coins}*, { parse_mode: "Markdown" });
+    bot.sendMessage(chatId, `🎲 *Dice Roll:* ${roll}\n\n❌ *LOSS!* You lost your bet.\n📉 Deducted: *${amount}* coins.\nBalance: *${user.coins}*`, { parse_mode: "Markdown" });
   }
 });
 
@@ -200,11 +198,11 @@ bot.onText(/\/flip (heads|tails) (\d+)/, (msg, match) => {
   if (choice === result) {
     user.coins += amount;
     user.wins += 1;
-    bot.sendMessage(chatId, 🪙 *Coin Result:* ${result.toUpperCase()}\n\n🎉 *WIN!* Choice matched.\n💰 Won: *${amount}* coins.\nBalance: *${user.coins}*, { parse_mode: "Markdown" });
+    bot.sendMessage(chatId, `🪙 *Coin Result:* ${result.toUpperCase()}\n\n🎉 *WIN!* Choice matched.\n💰 Won: *${amount}* coins.\nBalance: *${user.coins}*`, { parse_mode: "Markdown" });
   } else {
     user.coins -= amount;
     user.losses += 1;
-    bot.sendMessage(chatId, 🪙 *Coin Result:* ${result.toUpperCase()}\n\n❌ *LOSS!* Choice mismatched.\n📉 Lost: *${amount}* coins.\nBalance: *${user.coins}*, { parse_mode: "Markdown" });
+    bot.sendMessage(chatId, `🪙 *Coin Result:* ${result.toUpperCase()}\n\n❌ *LOSS!* Choice mismatched.\n📉 Lost: *${amount}* coins.\nBalance: *${user.coins}*`, { parse_mode: "Markdown" });
   }
 });
 
@@ -213,14 +211,14 @@ bot.onText(/\/numberguess/, (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
 
-if (!users[userId]) return bot.sendMessage(chatId, "❌ Please use /start first.");
+  if (!users[userId]) return bot.sendMessage(chatId, "❌ Please use /start first.");
   
   activeGames[userId] = {
     target: Math.floor(Math.random() * 100) + 1,
     attempts: 0
   };
 
-  bot.sendMessage(chatId, 🔢 *Number Guessing Game Started!*\n\nI've chosen a number between *1 and 100*.\nUse \/ng <number>\ to guess!, { parse_mode: "Markdown" });
+  bot.sendMessage(chatId, `🔢 *Number Guessing Game Started!*\n\nI've chosen a number between *1 and 100*.\nUse \`/ng <number>\` to guess!`, { parse_mode: "Markdown" });
 });
 
 bot.onText(/\/ng (\d+)/, (msg, match) => {
@@ -243,10 +241,10 @@ bot.onText(/\/ng (\d+)/, (msg, match) => {
     users[userId].coins += reward;
     delete activeGames[userId]; 
 
-    bot.sendMessage(chatId, 🎉 *CORRECT!* The number was *${guess}*.\n🎯 Total Attempts: *${game.attempts}*\n💰 Reward Credited: *${reward} Coins*!, { parse_mode: "Markdown" });
+    bot.sendMessage(chatId, `🎉 *CORRECT!* The number was *${guess}*.\n🎯 Total Attempts: *${game.attempts}*\n💰 Reward Credited: *${reward} Coins*!`, { parse_mode: "Markdown" });
   } else {
     const hint = guess < game.target ? "Higher ⬆️" : "Lower ⬇️";
-    bot.sendMessage(chatId, ❌ *Wrong Guess!*\n💡 Hint: Try a *${hint}* number.\n⏳ Attempt Count: *${game.attempts}*, { parse_mode: "Markdown" });
+    bot.sendMessage(chatId, `❌ *Wrong Guess!*\n💡 Hint: Try a *${hint}* number.\n⏳ Attempt Count: *${game.attempts}*`, { parse_mode: "Markdown" });
   }
 });
 
@@ -263,7 +261,7 @@ bot.onText(/\/add (\d+)/, (msg, match) => {
   }
 
   if (!msg.reply_to_message) {
-    return bot.sendMessage(chatId, "⚠️ Please *reply* to a player's message with /add <amount> to give them coins.", { parse_mode: "Markdown" });
+    return bot.sendMessage(chatId, "⚠️ Please *reply* to a player's message with `/add <amount>` to give them coins.", { parse_mode: "Markdown" });
   }
 
   const targetUserId = msg.reply_to_message.from.id;
@@ -273,7 +271,7 @@ bot.onText(/\/add (\d+)/, (msg, match) => {
   }
 
   users[targetUserId].coins += amount;
-  bot.sendMessage(chatId, added ${amount});
+  bot.sendMessage(chatId, `added ${amount}`);
 });
 
 console.log("CL Zone Bot Core Online");
@@ -286,5 +284,5 @@ const server = http.createServer((req, res) => {
   res.end('CL Zone Bot is Alive and Running!');
 });
 server.listen(port, () => {
-  console.log(Server standard checking active on port ${port});
+  console.log(`Server standard checking active on port ${port}`);
 });
