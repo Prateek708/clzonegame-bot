@@ -5,7 +5,7 @@ const token = process.env.BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
 
 // --- SET YOUR TELEGRAM USER ID HERE ---
-const ADMIN_ID = 1315564307; 
+const ADMIN_ID = 1315564307; 8708547223;
 
 // In-Memory Database (Temporary until MongoDB setup)
 const users = {};
@@ -37,7 +37,7 @@ bot.onText(/\/start/, (msg) => {
   
   const isNew = initUser(userId, firstName);
 
-  let welcomeText = `🎮 *Welcome to CL Zone Bot!* 🎮\n\n`;
+  let welcomeText = `🎮 *Welcome to Gaming Space!* 🎮\n\n`;
   if (isNew) {
     welcomeText += `🎁 *Thanks for starting! Your reward: 2000 Coins* 🎁\n\n`;
   }
