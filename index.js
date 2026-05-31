@@ -1,24 +1,17 @@
-const TelegramBot = require("node-telegram-bot-api");
+Const TelegramBot = require("node-telegram-bot-api");
 const http = require('http');
 
 const token = process.env.BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
 
 // --- SET YOUR TELEGRAM USER ID HERE ---
-const ADMIN_ID = 1315564307; 
+const ADMIN_ID = 1315564307; 8708547223;
 
-// In-Memory Database
+// In-Memory Database (Temporary until MongoDB setup)
 const users = {};
 const activeGames = {}; 
 
-// Shop Items
-const items = {
-    "shield": { name: "Protection Shield", cost: 1000000, desc: "Prevents coin loss on your next game." },
-    "booster": { name: "Lucky Booster", cost: 1500000, desc: "Get 2x earnings for your next 3 games." },
-    "vip": { name: "VIP Badge", cost: 5000000, desc: "Get a special VIP tag on your profile." }
-};
-
-// Helper function
+// Helper function to initialize user data
 function initUser(userId, firstName) {
   if (!users[userId]) {
     users[userId] = {
@@ -27,108 +20,285 @@ function initUser(userId, firstName) {
       wins: 0,
       losses: 0,
       lastClaim: null,
-      lastSpin: null,
-      shield: false,
-      booster: 0,
-      vip: false
+      lastSpin: null
     };
     return true; 
   }
   return false; 
 }
 
-// 1. START COMMAND
+// ==========================================
+// 1. START COMMAND & REGISTRATION LOCK
+// ==========================================
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
   const firstName = msg.from.first_name;
+  
   const isNew = initUser(userId, firstName);
 
   let welcomeText = `🎮 *Welcome to Gaming Space!* 🎮\n\n`;
-  if (isNew) welcomeText += `🎁 *Thanks for starting! Your reward: 2000 Coins* 🎁\n\n`;
-  welcomeText += `🔹 /profile - View status & coins\n🔹 /shop - Visit Premium Shop\n🔹 /daily - Claim 1000 Coins\n🔹 /spin - Spin Wheel\n🔹 /dice <amount>\n🔹 /flip <h/t> <amount>\n🔹 /numberguess`;
+  if (isNew) {
+    welcomeText += `🎁 *Thanks for starting! Your reward: 2000 Coins* 🎁\n\n`;
+  }
+
+  welcomeText += `Use these commands to play:\n` +
+                 `🔹 /profile - View status & coins\n` +
+                 `🔹 /daily - Claim 1000 Coins (24h)\n` +
+                 `🔹 /spin - Spin for 1k-10k coins (24h)\n` +
+                 `🔹 /leaderboard - View Top 15 players\n\n` +
+                 `🎮 *Games Available:* \n` +
+                 `🎲 /dice <amount> (Limit: 100-20k)\n` +
+                 `🪙 /flip <heads/tails> <amount> (Limit: 100-30k)\n` +
+                 `🔢 /numberguess - Start Number Guessing Game\n` +
+                 `👉 /ng <number> - Make your guess (1-100)`;
+
   bot.sendMessage(chatId, welcomeText, { parse_mode: "Markdown" });
 });
 
-// 2. PROFILE
+// ==========================================
+// 2. PHASE 1 COMMANDS (Profile, Daily, Spin, Leaderboard)
+// ==========================================
 bot.onText(/\/profile/, (msg) => {
   const chatId = msg.chat.id;
-  const user = users[msg.from.id];
-  if (!user) return bot.sendMessage(chatId, "❌ Please /start first.");
+  const userId = msg.from.id;
 
-  const vipTag = user.vip ? " | 👑 VIP" : "";
-  const shieldStatus = user.shield ? "✅ Active" : "❌ None";
-  
-  const profileText = `👤 *PROFILE* ${vipTag}\n\n` +
+  if (!users[userId]) {
+    return bot.sendMessage(chatId, `❌ *Access Denied!*\nPlease /start the bot first.`, { parse_mode: "Markdown" });
+  }
+
+  const user = users[userId];
+  const profileText = `👤 *YOUR GAME PROFILE* 👤\n\n` +
                       `📝 *Name:* ${user.name}\n` +
-                      `💰 *Coins:* ${user.coins.toLocaleString()}\n` +
-                      `🛡 *Shield:* ${shieldStatus}\n` +
-                      `⚡ *Booster:* ${user.booster || 0} left\n` +
-                      `✅ *Wins:* ${user.wins}\n` +
-                      `❌ *Losses:* ${user.losses}`;
+                      `💰 *Total Coins:* ${user.coins} CL Tokens\n` +
+                      `✅ *Total Wins:* ${user.wins}\n` +
+                      `❌ *Total Losses:* ${user.losses}\n` +
+                      `🆔 *User ID:* \`${userId}\``;
+
   bot.sendMessage(chatId, profileText, { parse_mode: "Markdown" });
 });
 
-// 3. SHOP COMMANDS
-bot.onText(/\/shop/, (msg) => {
-    let shopText = "🛒 *CL Zone Premium Shop* 🛒\n\n";
-    for (let id in items) {
-        shopText += `🔹 *${items[id].name}*\n💰 Price: ${items[id].cost.toLocaleString()}\n📝 ${items[id].desc}\nCommand: /buy_${id}\n\n`;
-    }
-    bot.sendMessage(msg.chat.id, shopText, { parse_mode: "Markdown" });
+bot.onText(/\/daily/, (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+
+  if (!users[userId]) return bot.sendMessage(chatId, `❌ Please /start first.`);
+
+  const user = users[userId];
+  const now = Date.now();
+  const cooldown = 24 * 60 * 60 * 1000;
+
+  if (user.lastClaim && (now - user.lastClaim < cooldown)) {
+    const remaining = cooldown - (now - user.lastClaim);
+    const hours = Math.floor(remaining / (1000 * 60 * 60));
+    const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+    bot.sendMessage(chatId, `❌ *Cooldown active!*\n⏳ Wait *${hours}h ${minutes}m*.`, { parse_mode: "Markdown" });
+  } else {
+    user.coins += 1000;
+    user.lastClaim = now;
+    bot.sendMessage(chatId, `🎁 *Daily Reward:* Received *1000 Coins*.\n💰 Total: *${user.coins}*`, { parse_mode: "Markdown" });
+  }
 });
 
-bot.onText(/\/buy_(shield|booster|vip)/, (msg, match) => {
-    const userId = msg.from.id;
-    const itemId = match[1];
-    const user = users[userId];
-    if (!user) return bot.sendMessage(msg.chat.id, "❌ /start first.");
-    if (user.coins < items[itemId].cost) return bot.sendMessage(msg.chat.id, "❌ Not enough coins!");
+bot.onText(/\/spin/, (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
 
-    user.coins -= items[itemId].cost;
-    if (itemId === "shield") user.shield = true;
-    if (itemId === "booster") user.booster = 3;
-    if (itemId === "vip") user.vip = true;
+  if (!users[userId]) return bot.sendMessage(chatId, `❌ Please /start first.`);
 
-    bot.sendMessage(msg.chat.id, `✅ Successfully purchased *${items[itemId].name}*!`);
+  const user = users[userId];
+  const now = Date.now();
+  const cooldown = 24 * 60 * 60 * 1000;
+
+  if (user.lastSpin && (now - user.lastSpin < cooldown)) {
+    const remaining = cooldown - (now - user.lastSpin);
+    const hours = Math.floor(remaining / (1000 * 60 * 60));
+    const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+    bot.sendMessage(chatId, `❌ *Wheel is cooling down!*\n⏳ Wait *${hours}h ${minutes}m*.`, { parse_mode: "Markdown" });
+  } else {
+    bot.sendMessage(chatId, "🎡 *Spinning the Wheel...* 🔄").then((sentMsg) => {
+      setTimeout(() => {
+        const randomMultiplier = Math.floor(Math.random() * 10) + 1; 
+        const wonAmount = randomMultiplier * 1000; 
+
+        user.coins += wonAmount;
+        user.wins += 1; 
+        user.lastSpin = now; 
+
+        bot.editMessageText(`🎉 *Spin Wheel Result!* 🎉\n\n🎡 Stopped at: *${wonAmount} Tokens*!\n💰 Total Coins: *${user.coins}*`, {
+          chat_id: chatId,
+          message_id: sentMsg.message_id,
+          parse_mode: "Markdown"
+        });
+      }, 2000);
+    });
+  }
 });
 
-// 4. DICE GAME
+bot.onText(/\/leaderboard/, (msg) => {
+  const chatId = msg.chat.id;
+  const sortedPlayers = Object.keys(users)
+    .map(id => ({ name: users[id].name, coins: users[id].coins }))
+    .sort((a, b) => b.coins - a.coins)
+    .slice(0, 15); 
+
+  let leaderboardText = `🌎 *TOP 15 -- COINS* 🪙\n\n`;
+  sortedPlayers.forEach((player, index) => {
+    let medal = `${index + 1}.`;
+    if (index === 0) medal = "🥇";
+    if (index === 1) medal = "🥈";
+    if (index === 2) medal = "🥉";
+    leaderboardText += `${medal} *${player.name}* - ${player.coins} 🪙\n`;
+  });
+  if (sortedPlayers.length === 0) leaderboardText += "No data available yet.";
+  bot.sendMessage(chatId, leaderboardText, { parse_mode: "Markdown" });
+});
+
+// ==========================================
+// 3. PHASE 2 GAMES (Dice, Flip, NumberGuess)
+// ==========================================
+
+// --- DICE GAME ---
 bot.onText(/\/dice (\d+)/, (msg, match) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
   const amount = parseInt(match[1]);
   const user = users[userId];
 
-  if (!user) return bot.sendMessage(chatId, "❌ Please /start first.");
-  if (amount < 100 || amount > 20000) return bot.sendMessage(chatId, "⚠️ Limit: 100-20,000.");
-  if (user.coins < amount) return bot.sendMessage(chatId, "❌ Not enough coins!");
+  if (!user) return bot.sendMessage(chatId, "❌ Please use /start first.");
+  if (amount < 100 || amount > 20000) return bot.sendMessage(chatId, "⚠️ *Dice Limit:* 100 to 20,000 coins.", { parse_mode: "Markdown" });
+  if (user.coins < amount) return bot.sendMessage(chatId, "❌ You don't have enough coins for this bet!");
 
-  const roll = Math.floor(Math.random() * 6) + 1;
+  const roll = Math.floor(Math.random() * 6) + 1; 
   if (roll >= 4) {
-    let winAmount = amount;
-    if (user.booster > 0) { winAmount *= 2; user.booster -= 1; }
-    user.coins += winAmount;
+    user.coins += amount;
     user.wins += 1;
-    bot.sendMessage(chatId, `🎲 *Roll:* ${roll}\n🎉 *WIN!* Added: ${winAmount}\n💰 Balance: ${user.coins}`);
+    bot.sendMessage(chatId, `🎲 *Dice Roll:* ${roll}\n\n🎉 *WIN!* You doubled your bet.\n💰 Added: *${amount}* coins.\nBalance: *${user.coins}*`, { parse_mode: "Markdown" });
   } else {
-    if (user.shield) { user.shield = false; bot.sendMessage(chatId, "🛡 *Shield Activated!* No coins lost."); }
-    else { user.coins -= amount; user.losses += 1; bot.sendMessage(chatId, `🎲 *Roll:* ${roll}\n❌ *LOSS!* Lost: ${amount}\n💰 Balance: ${user.coins}`); }
+    user.coins -= amount;
+    user.losses += 1;
+    bot.sendMessage(chatId, `🎲 *Dice Roll:* ${roll}\n\n❌ *LOSS!* You lost your bet.\n📉 Deducted: *${amount}* coins.\nBalance: *${user.coins}*`, { parse_mode: "Markdown" });
   }
 });
 
-// 5. ADMIN COMMANDS
+// --- COIN FLIP ---
+bot.onText(/\/flip (heads|tails) (\d+)/, (msg, match) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  const choice = match[1].toLowerCase();
+  const amount = parseInt(match[2]);
+  const user = users[userId];
+
+  if (!user) return bot.sendMessage(chatId, "❌ Please use /start first.");
+  if (amount < 100 || amount > 30000) return bot.sendMessage(chatId, "⚠️ *Flip Limit:* 100 to 30,000 coins.", { parse_mode: "Markdown" });
+  if (user.coins < amount) return bot.sendMessage(chatId, "❌ You don't have enough coins for this bet!");
+
+  const result = Math.random() < 0.5 ? "heads" : "tails";
+  
+  if (choice === result) {
+    user.coins += amount;
+    user.wins += 1;
+    bot.sendMessage(chatId, `🪙 *Coin Result:* ${result.toUpperCase()}\n\n🎉 *WIN!* Choice matched.\n💰 Won: *${amount}* coins.\nBalance: *${user.coins}*`, { parse_mode: "Markdown" });
+  } else {
+    user.coins -= amount;
+    user.losses += 1;
+    bot.sendMessage(chatId, `🪙 *Coin Result:* ${result.toUpperCase()}\n\n❌ *LOSS!* Choice mismatched.\n📉 Lost: *${amount}* coins.\nBalance: *${user.coins}*`, { parse_mode: "Markdown" });
+  }
+});
+
+// --- NUMBER GUESSING ---
+bot.onText(/\/numberguess/, (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+
+  if (!users[userId]) return bot.sendMessage(chatId, "❌ Please use /start first.");
+  
+  activeGames[userId] = {
+    target: Math.floor(Math.random() * 100) + 1,
+    attempts: 0
+  };
+
+  bot.sendMessage(chatId, `🔢 *Number Guessing Game Started!*\n\nI've chosen a number between *1 and 100*.\nUse \`/ng <number>\` to guess!`, { parse_mode: "Markdown" });
+});
+
+bot.onText(/\/ng (\d+)/, (msg, match) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  const guess = parseInt(match[1]);
+
+  if (!activeGames[userId]) {
+    return bot.sendMessage(chatId, "❌ No active game. Start one with /numberguess");
+  }
+
+  const game = activeGames[userId];
+  game.attempts += 1;
+
+  if (guess === game.target) {
+    let reward = 500;
+    if (game.attempts <= 3) reward = 3000;
+    else if (game.attempts <= 7) reward = 1000;
+
+    users[userId].coins += reward;
+    delete activeGames[userId]; 
+
+    bot.sendMessage(chatId, `🎉 *CORRECT!* The number was *${guess}*.\n🎯 Total Attempts: *${game.attempts}*\n💰 Reward Credited: *${reward} Coins*!`, { parse_mode: "Markdown" });
+  } else {
+    const hint = guess < game.target ? "Higher ⬆️" : "Lower ⬇️";
+    bot.sendMessage(chatId, `❌ *Wrong Guess!*\n💡 Hint: Try a *${hint}* number.\n⏳ Attempt Count: *${game.attempts}*`, { parse_mode: "Markdown" });
+  }
+});
+
+// ==========================================
+// 4. ADMIN CONTROL (Add Coins by Replying)
+// ==========================================
+
+// ADD COMMAND
 bot.onText(/\/add (\d+)/, (msg, match) => {
-    if (msg.from.id !== ADMIN_ID || !msg.reply_to_message) return;
-    users[msg.reply_to_message.from.id].coins += parseInt(match[1]);
-    bot.sendMessage(msg.chat.id, "✅ Added.");
+    const chatId = msg.chat.id;
+    const senderId = msg.from.id;
+    const amount = parseInt(match[1]);
+
+    if (senderId !== ADMIN_ID) {
+        return bot.sendMessage(chatId, "❌ Access Denied!");
+    }
+
+    if (!msg.reply_to_message) {
+        return bot.sendMessage(chatId, "⚠️ Please reply to a player's message to add coins.");
+    }
+
+    const targetUserId = msg.reply_to_message.from.id;
+    if (!users[targetUserId]) {
+        return bot.sendMessage(chatId, "❌ Player not registered.");
+    }
+
+    users[targetUserId].coins += amount;
+    bot.sendMessage(chatId, `✅ Added ${amount} coins to ${users[targetUserId].name}.\n💰 New Balance: ${users[targetUserId].coins}`);
 });
 
+// REMOVE COMMAND
 bot.onText(/\/remove (\d+)/, (msg, match) => {
-    if (msg.from.id !== ADMIN_ID || !msg.reply_to_message) return;
-    const target = users[msg.reply_to_message.from.id];
-    target.coins = Math.max(0, target.coins - parseInt(match[1]));
-    bot.sendMessage(msg.chat.id, "✅ Deducted.");
+    const chatId = msg.chat.id;
+    const senderId = msg.from.id;
+    const amount = parseInt(match[1]);
+
+    if (senderId !== ADMIN_ID) {
+        return bot.sendMessage(chatId, "❌ Access Denied!");
+    }
+
+    if (!msg.reply_to_message) {
+        return bot.sendMessage(chatId, "⚠️ Please reply to a player's message to remove coins.");
+    }
+
+    const targetUserId = msg.reply_to_message.from.id;
+    if (!users[targetUserId]) {
+        return bot.sendMessage(chatId, "❌ Player not registered.");
+    }
+
+    // Deduction logic with negative balance check
+    users[targetUserId].coins -= amount;
+    if (users[targetUserId].coins < 0) users[targetUserId].coins = 0;
+
+    bot.sendMessage(chatId, `✅ Deducted ${amount} coins from ${users[targetUserId].name}.\n💰 New Balance: ${users[targetUserId].coins}`);
 });
 
-// Daily, Spin, Flip, NumberGuess... (Keep your remaining code here)
+Ye purana code hai iske hi add karke bhej do na (bas add kro baki kuch change mat karna)
