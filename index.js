@@ -300,5 +300,3 @@ bot.onText(/\/remove (\d+)/, (msg, match) => {
 
     bot.sendMessage(chatId, `✅ Deducted ${amount} coins from ${users[targetUserId].name}.\n💰 New Balance: ${users[targetUserId].coins}`);
 });
-
-Ye purana code hai iske hi add karke bhej do na (bas add kro baki kuch change mat karna)
