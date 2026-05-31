@@ -1,50 +1,58 @@
-const TelegramBot = require("node-telegram-bot-api");
-const http = require('http');
+Def add_group(group_id):
+    """Saves a group chat ID to the database for auto-promotion."""
+    conn = sqlite3.connect('economy.db')
+    c = conn.cursor()
+    c.execute("INSERT OR IGNORE INTO groups (group_id) VALUES (?)", (group_id,))
+    conn.commit()
+    conn.close()
 
-const token = process.env.BOT_TOKEN;
-const bot = new TelegramBot(token, { polling: true });
+def add_land_purchase(user_id, city, area, sq_ft, price):
+    """Saves a new land purchase to the database."""
+    conn = sqlite3.connect("economy.db")
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO land_holdings VALUES (?, ?, ?, ?, ?)",
+                   (user_id, city, area, sq_ft, price))
+    conn.commit()
+    conn.close()
 
-const users = {}; 
-const activeMines = {};
-const activeNG = {}; 
+def get_user_land(user_id):
+    """Retrieves all properties owned by a specific user."""
+    conn = sqlite3.connect("economy.db")
+    cursor = conn.cursor()
+    # Ensure it's selecting rowid
+    cursor.execute("SELECT rowid, city, area, sq_ft, purchase_price FROM land_holdings WHERE user_id = ?", (user_id,))
+    land = cursor.fetchall()
+    conn.close()
+    return land
 
-function initUser(id, name) {
-    if (!users[id]) {
-        users[id] = { name, coins: 2000, wins: 0, losses: 0, lastClaim: 0 };
-    }
-}
+def get_specific_land(purchase_id, user_id):
+    """Fetches a single property to verify ownership before selling."""
+    conn = sqlite3.connect("economy.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT city, area, sq_ft, purchase_price FROM land_holdings WHERE rowid = ? AND user_id = ?",
+                   (purchase_id, user_id))
+    result = cursor.fetchone()
+    conn.close()
+    return result
 
-// --- START COMMAND ---
-bot.onText(/\/start(?:@\w+)?/, (msg) => {
-    initUser(msg.from.id, msg.from.first_name);
-    const text = `🎮 *Welcome to CL Zone Bot!* 🎮\n\n` +
-                 `Commands:\n/profile, /daily, /spin, /leaderboard\n\n` +
-                 `Games:\n💣 /mines <amt> <bombs>\n🎲 /dice, 🪙 /flip\n🔢 /numberguess\n👉 /ng <number>`;
-    bot.sendMessage(msg.chat.id, text, { parse_mode: "Markdown" });
-});
+def delete_land_record(purchase_id):
+    """Removes a property record after it has been sold."""
+    conn = sqlite3.connect("economy.db")
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM land_holdings WHERE rowid = ?", (purchase_id,))
+    conn.commit()
+    conn.close()
 
-// --- PROFILE, DAILY, SPIN ---
-bot.onText(/\/profile(?:@\w+)?/, (msg) => {
-    initUser(msg.from.id, msg.from.first_name);
-    const u = users[msg.from.id];
-    bot.sendMessage(msg.chat.id, `👤 ${u.name}\n💰 Coins: ${u.coins}\n✅ Wins: ${u.wins}\n❌ Losses: ${u.losses}`);
-});
+def transfer_inventory_item(item_name, old_owner_id, new_owner_id):
+    """Moves a car or cricketer from one inventory to another."""
+    conn = sqlite3.connect("economy.db")
+    cursor = conn.cursor()
+    # Using LIMIT 1 ensures we only gift one instance of the item
+    cursor.execute("UPDATE inventory SET user_id = ? WHERE user_id = ? AND item_name = ?",
+                   (new_owner_id, old_owner_id, item_name))
+    success = cursor.rowcount > 0
+    conn.commit()
+    conn.close()
+    return success
 
-bot.onText(/\/daily(?:@\w+)?/, (msg) => {
-    const u = users[msg.from.id];
-    if (Date.now() - u.lastClaim < 86400000) return bot.sendMessage(msg.chat.id, "⏳ Come back in 24h!");
-    u.coins += 500;
-    u.lastClaim = Date.now();
-    bot.sendMessage(msg.chat.id, "🎁 Claimed 500 coins!");
-});
-
-bot.onText(/\/spin(?:@\w+)?/, (msg) => {
-    const win = Math.floor(Math.random() * 9000) + 1000;
-    users[msg.from.id].coins += win;
-    bot.sendMessage(msg.chat.id, `🎉 *Spin Wheel Result!* 🎉\n\n🎡 Stopped at: ${win} Tokens!\n💰 Total Coins: ${users[msg.from.id].coins}`, { parse_mode: "Markdown" });
-});
-
-bot.onText(/\/leaderboard(?:@\w+)?/, (msg) => {
-    const sorted = Object.entries(users).sort((a,b) => b[1].coins - a[1].coins).slice(0,10)
-        .map((u, i) => `${i+1}. ${u[1].name}: ${u[1].coins} 💰`).
-        
+Ye code kya hai
