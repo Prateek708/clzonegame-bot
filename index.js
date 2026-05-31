@@ -249,54 +249,62 @@ bot.onText(/\/ng (\d+)/, (msg, match) => {
 });
 
 // ==========================================
-// 4. ADMIN CONTROL (Add Coins by Replying)
+// ADMIN CONTROL: ADD & REMOVE COINS
 // ==========================================
 
-// ADD COMMAND
-bot.onText(/\/add (\d+)/, (msg, match) => {
+// /addcoins <amount>
+bot.onText(/\/addcoins (\d+)/, (msg, match) => {
     const chatId = msg.chat.id;
     const senderId = msg.from.id;
     const amount = parseInt(match[1]);
 
+    // Admin Check
     if (senderId !== ADMIN_ID) {
         return bot.sendMessage(chatId, "❌ Access Denied!");
     }
 
+    // Reply Check
     if (!msg.reply_to_message) {
         return bot.sendMessage(chatId, "⚠️ Please reply to a player's message to add coins.");
     }
 
-    const targetUserId = msg.reply_to_message.from.id;
+    const targetUser = msg.reply_to_message.from;
+    const targetUserId = targetUser.id;
+
     if (!users[targetUserId]) {
-        return bot.sendMessage(chatId, "❌ Player not registered.");
+        return bot.sendMessage(chatId, "❌ Player is not registered (Tell them to /start).");
     }
 
     users[targetUserId].coins += amount;
-    bot.sendMessage(chatId, `✅ Added ${amount} coins to ${users[targetUserId].name}.\n💰 New Balance: ${users[targetUserId].coins}`);
+    
+    bot.sendMessage(chatId, `✅ Added ${amount} coins to ${targetUser.first_name}.\n💰 New Balance: ${users[targetUserId].coins}`, { parse_mode: "Markdown" });
 });
 
-// REMOVE COMMAND
-bot.onText(/\/remove (\d+)/, (msg, match) => {
+// /removecoins <amount>
+bot.onText(/\/removecoins (\d+)/, (msg, match) => {
     const chatId = msg.chat.id;
     const senderId = msg.from.id;
     const amount = parseInt(match[1]);
 
+    // Admin Check
     if (senderId !== ADMIN_ID) {
         return bot.sendMessage(chatId, "❌ Access Denied!");
     }
 
+    // Reply Check
     if (!msg.reply_to_message) {
-        return bot.sendMessage(chatId, "⚠️ Please reply to a player's message to remove coins.");
+        return bot.sendMessage(chatId, "⚠️ Please reply to a player's message to deduct coins.");
     }
 
-    const targetUserId = msg.reply_to_message.from.id;
+    const targetUser = msg.reply_to_message.from;
+    const targetUserId = targetUser.id;
+
     if (!users[targetUserId]) {
-        return bot.sendMessage(chatId, "❌ Player not registered.");
+        return bot.sendMessage(chatId, "❌ Player is not registered.");
     }
 
-    // Deduction logic with negative balance check
-    users[targetUserId].coins -= amount;
-    if (users[targetUserId].coins < 0) users[targetUserId].coins = 0;
-
-    bot.sendMessage(chatId, `✅ Deducted ${amount} coins from ${users[targetUserId].name}.\n💰 New Balance: ${users[targetUserId].coins}`);
+    // Deduct coins
+    users[targetUserId].coins = Math.max(0, users[targetUserId].coins - amount);
+    
+    bot.sendMessage(chatId, `✅ Deducted ${amount} coins from ${targetUser.first_name}.\n💰 New Balance: ${users[targetUserId].coins}`, { parse_mode: "Markdown" });
 });
