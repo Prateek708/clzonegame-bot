@@ -18,12 +18,12 @@ function initUser(userId, firstName) {
       lastClaim: null,
       lastSpin: null
     };
-    return true;
+    return true; // New registration
   }
-  return false;
+  return false; // Already registered
 }
 
-// 1. START COMMAND
+// 1. START COMMAND (Only place where a player can register)
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
@@ -50,9 +50,13 @@ bot.onText(/\/start/, (msg) => {
 bot.onText(/\/profile/, (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
-  initUser(userId, msg.from.first_name);
-  const user = users[userId];
 
+  // STRICT CHECK: If user is not registered, block them!
+  if (!users[userId]) {
+    return bot.sendMessage(chatId, `❌ *Access Denied!*\n\nPlease use the /start command first to register and activate your account.`, { parse_mode: "Markdown" });
+  }
+
+  const user = users[userId];
   const profileText = `👤 *YOUR GAME PROFILE* 👤\n\n` +
                       `📝 *Name:* ${user.name}\n` +
                       `💰 *Total Coins:* ${user.coins} CL Tokens\n` +
@@ -67,9 +71,13 @@ bot.onText(/\/profile/, (msg) => {
 bot.onText(/\/daily/, (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
-  initUser(userId, msg.from.first_name);
-  const user = users[userId];
 
+  // STRICT CHECK: If user is not registered, block them!
+  if (!users[userId]) {
+    return bot.sendMessage(chatId, `❌ *Access Denied!*\n\nPlease use the /start command first to register and activate your account.`, { parse_mode: "Markdown" });
+  }
+
+  const user = users[userId];
   const now = Date.now();
   const cooldown = 24 * 60 * 60 * 1000; // 24 Hours
 
@@ -89,9 +97,13 @@ bot.onText(/\/daily/, (msg) => {
 bot.onText(/\/spin/, (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
-  initUser(userId, msg.from.first_name);
-  const user = users[userId];
 
+  // STRICT CHECK: If user is not registered, block them!
+  if (!users[userId]) {
+    return bot.sendMessage(chatId, `❌ *Access Denied!*\n\nPlease use the /start command first to register and activate your account.`, { parse_mode: "Markdown" });
+  }
+
+  const user = users[userId];
   const now = Date.now();
   const cooldown = 24 * 60 * 60 * 1000; // 24 Hours
 
@@ -103,13 +115,12 @@ bot.onText(/\/spin/, (msg) => {
   } else {
     bot.sendMessage(chatId, "🎡 *Spinning the Wheel...* 🔄").then((sentMsg) => {
       setTimeout(() => {
-        // Random amount between 1000 and 10000 (multiples of 1000)
         const randomMultiplier = Math.floor(Math.random() * 10) + 1; // 1 to 10
-        const wonAmount = randomMultiplier * 1000; // 1000, 2000 ... 10000
+        const wonAmount = randomMultiplier * 1000; 
 
         user.coins += wonAmount;
         user.wins += 1; 
-        user.lastSpin = now; // Save the spin timestamp
+        user.lastSpin = now; 
 
         bot.editMessageText(`🎉 *Spin Wheel Result!* 🎉\n\n🎡 Wheel stopped at: *${wonAmount} Tokens*!\n💰 Total Coins: *${user.coins}*`, {
           chat_id: chatId,
@@ -128,7 +139,7 @@ bot.onText(/\/leaderboard/, (msg) => {
   const sortedPlayers = Object.keys(users)
     .map(id => ({ name: users[id].name, coins: users[id].coins }))
     .sort((a, b) => b.coins - a.coins)
-    .slice(0, 15); // Top 15 players
+    .slice(0, 15); 
 
   let leaderboardText = `🌎 *TOP 15 -- COINS* 🪙\n\n`;
   
