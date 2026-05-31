@@ -15,63 +15,60 @@ function initUser(id, name) {
     }
 }
 
-// --- PHASE 1 & 2 COMMANDS ---
+// --- WELCOME UI ---
 bot.onText(/\/start/, (msg) => {
     initUser(msg.from.id, msg.from.first_name);
-    bot.sendMessage(msg.chat.id, "Welcome to CL Zone! Commands: /profile, /daily, /spin, /dice, /flip, /mines <amt>.");
+    const welcomeText = `🎮 *Welcome to CL Zone Bot!* 🎮\n\n` +
+                        `🎁 Thanks for starting! Your reward: 2000 Coins 🎁\n\n` +
+                        `Use these commands to play:\n` +
+                        `🔹 /profile - View status & coins\n` +
+                        `🔹 /daily - Claim 1000 Coins (24h)\n` +
+                        `🔹 /spin - Spin for 1k-10k coins (24h)\n` +
+                        `🔹 /leaderboard - View Top 15 players\n\n` +
+                        `🎮 *Games Available:*\n` +
+                        `🎲 /dice <amount> (Limit: 100-20k)\n` +
+                        `🪙 /flip <heads/tails> <amount> (Limit: 100-30k)\n` +
+                        `🔢 /numberguess - Start Number Guessing Game\n` +
+                        `👉 /ng <number> - Make your guess (1-100)\n` +
+                        `💣 /mines <amount> (Limit: 100-10k)`;
+    bot.sendMessage(msg.chat.id, welcomeText, { parse_mode: "Markdown" });
 });
 
-bot.onText(/\/profile/, (msg) => {
-    const u = users[msg.from.id];
-    if (!u) return bot.sendMessage(msg.chat.id, "Use /start first.");
-    bot.sendMessage(msg.chat.id, `👤 ${u.name}\n💰 Coins: ${u.coins}\n✅ Wins: ${u.wins}\n❌ Losses: ${u.losses}`);
-});
-
-bot.onText(/\/daily/, (msg) => {
-    initUser(msg.from.id, msg.from.first_name);
-    users[msg.from.id].coins += 500;
-    bot.sendMessage(msg.chat.id, "🎁 You claimed 500 coins!");
-});
-
-bot.onText(/\/dice/, (msg) => {
-    const val = Math.floor(Math.random() * 6) + 1;
-    bot.sendMessage(msg.chat.id, `🎲 You rolled a ${val}`);
-});
-
-bot.onText(/\/flip/, (msg) => {
-    const res = Math.random() < 0.5 ? "Heads" : "Tails";
-    bot.sendMessage(msg.chat.id, `🪙 Coin Flip: ${res}`);
-});
-
-// --- MINES GAME LOGIC ---
-bot.onText(/\/mines (\d+)/, (msg, match) => {
+// --- MINES LOGIC (FIXED) ---
+bot.onText(/\/mines(?:\s+(\d+))?/, (msg, match) => {
     const id = msg.from.id;
     const bet = parseInt(match[1]);
     initUser(id, msg.from.first_name);
 
-    if (bet < 100 || bet > 10000) return bot.sendMessage(msg.chat.id, "⚠️ Limit: 100-10,000 coins.");
+    if (!bet || bet < 100 || bet > 10000) {
+        return bot.sendMessage(msg.chat.id, "⚠️ *Format Error!*\nUsage: /mines <amount>\nLimit: 100-10,000");
+    }
     if (users[id].coins < bet) return bot.sendMessage(msg.chat.id, "❌ Not enough coins.");
 
-    activeMines[id] = { bet, mines: [Math.floor(Math.random()*25), Math.floor(Math.random()*25), Math.floor(Math.random()*25)], step: 0 };
-    bot.sendMessage(msg.chat.id, `💣 *Mines Game Started!*\nBet: ${bet}\nNext Multiplier: 0.99x\nUse /pick <0-24>`);
+    activeMines[id] = { 
+        bet, 
+        mines: [Math.floor(Math.random()*25), Math.floor(Math.random()*25), Math.floor(Math.random()*25)], 
+        step: 0 
+    };
+    bot.sendMessage(msg.chat.id, `💣 *Mines Game Started!*\n\n💰 Bet: ${bet} CL Tokens\n📈 Next Multiplier: 0.99x\n\nUse /pick <0-24> to reveal a spot!`);
 });
 
 bot.onText(/\/pick (\d+)/, (msg, match) => {
     const id = msg.from.id;
     const pos = parseInt(match[1]);
     const game = activeMines[id];
-    if (!game) return bot.sendMessage(msg.chat.id, "❌ Start with /mines <amt>.");
+    if (!game) return bot.sendMessage(msg.chat.id, "❌ Start a game with /mines <amount> first.");
 
     if (game.mines.includes(pos)) {
         users[id].coins -= game.bet;
         users[id].losses++;
         delete activeMines[id];
-        bot.sendMessage(msg.chat.id, `💥 *BOOM!* You lost ${game.bet} coins.`);
+        bot.sendMessage(msg.chat.id, `💥 *BOOM!* Mine hit. You lost ${game.bet} coins.`);
     } else {
         const cur = multipliers[game.step] || 3.0;
         game.step++;
         const next = multipliers[game.step] || "Max";
-        bot.sendMessage(msg.chat.id, `✅ *Safe Spot!*\nCurrent: ${cur}x\nNext: ${next}x\n/pick or /cashout.`);
+        bot.sendMessage(msg.chat.id, `✅ *Safe Spot!*\nCurrent: ${cur}x\nNext: ${next}x\n/pick <0-24> or /cashout.`);
     }
 });
 
