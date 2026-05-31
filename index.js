@@ -251,39 +251,52 @@ bot.onText(/\/ng (\d+)/, (msg, match) => {
 // ==========================================
 // 4. ADMIN CONTROL (Add Coins by Replying)
 // ==========================================
+
+// ADD COMMAND
 bot.onText(/\/add (\d+)/, (msg, match) => {
-  const chatId = msg.chat.id;
-  const senderId = msg.from.id;
-  const amount = parseInt(match[1]);
+    const chatId = msg.chat.id;
+    const senderId = msg.from.id;
+    const amount = parseInt(match[1]);
 
-  if (senderId !== ADMIN_ID) {
-    return bot.sendMessage(chatId, "❌ *Access Denied!* Only the Bot Admin can add coins.", { parse_mode: "Markdown" });
-  }
+    if (senderId !== ADMIN_ID) {
+        return bot.sendMessage(chatId, "❌ Access Denied!");
+    }
 
-  if (!msg.reply_to_message) {
-    return bot.sendMessage(chatId, "⚠️ Please *reply* to a player's message with `/add <amount>` to give them coins.", { parse_mode: "Markdown" });
-  }
+    if (!msg.reply_to_message) {
+        return bot.sendMessage(chatId, "⚠️ Please reply to a player's message to add coins.");
+    }
 
-  const targetUserId = msg.reply_to_message.from.id;
-  
-  if (!users[targetUserId]) {
-    return bot.sendMessage(chatId, "❌ This player is not registered in temporary database yet (Ask them to /start).");
-  }
+    const targetUserId = msg.reply_to_message.from.id;
+    if (!users[targetUserId]) {
+        return bot.sendMessage(chatId, "❌ Player not registered.");
+    }
 
-  users[targetUserId].coins += amount;
-  bot.sendMessage(chatId, `added ${amount}`);
+    users[targetUserId].coins += amount;
+    bot.sendMessage(chatId, `✅ Added ${amount} coins to ${users[targetUserId].name}.\n💰 New Balance: ${users[targetUserId].coins}`);
 });
 
-console.log("CL Zone Bot Core Online");
+// REMOVE COMMAND
+bot.onText(/\/remove (\d+)/, (msg, match) => {
+    const chatId = msg.chat.id;
+    const senderId = msg.from.id;
+    const amount = parseInt(match[1]);
 
-// --- Render Web Service Port Binding ---
-const port = process.env.PORT || 3000;
-const server = http.createServer((req, res) => {
-  res.statusCode = 200;
-  res.setHeader('Content-Type', 'text/plain');
-  res.end('CL Zone Bot is Alive and Running!');
-});
-server.listen(port, () => {
-  console.log(`Server standard checking active on port ${port}`);
-});
+    if (senderId !== ADMIN_ID) {
+        return bot.sendMessage(chatId, "❌ Access Denied!");
+    }
 
+    if (!msg.reply_to_message) {
+        return bot.sendMessage(chatId, "⚠️ Please reply to a player's message to remove coins.");
+    }
+
+    const targetUserId = msg.reply_to_message.from.id;
+    if (!users[targetUserId]) {
+        return bot.sendMessage(chatId, "❌ Player not registered.");
+    }
+
+    // Deduction logic with negative balance check
+    users[targetUserId].coins -= amount;
+    if (users[targetUserId].coins < 0) users[targetUserId].coins = 0;
+
+    bot.sendMessage(chatId, `✅ Deducted ${amount} coins from ${users[targetUserId].name}.\n💰 New Balance: ${users[targetUserId].coins}`);
+});
