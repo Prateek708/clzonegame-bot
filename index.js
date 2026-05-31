@@ -1,58 +1,80 @@
-Def add_group(group_id):
-    """Saves a group chat ID to the database for auto-promotion."""
-    conn = sqlite3.connect('economy.db')
-    c = conn.cursor()
-    c.execute("INSERT OR IGNORE INTO groups (group_id) VALUES (?)", (group_id,))
-    conn.commit()
-    conn.close()
+// --- NUMBER GUESSING ---
+bot.onText(/\/numberguess/, (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
 
-def add_land_purchase(user_id, city, area, sq_ft, price):
-    """Saves a new land purchase to the database."""
-    conn = sqlite3.connect("economy.db")
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO land_holdings VALUES (?, ?, ?, ?, ?)",
-                   (user_id, city, area, sq_ft, price))
-    conn.commit()
-    conn.close()
+  if (!users[userId]) return bot.sendMessage(chatId, "❌ Please use /start first.");
+  
+  activeGames[userId] = {
+    target: Math.floor(Math.random() * 100) + 1,
+    attempts: 0
+  };
 
-def get_user_land(user_id):
-    """Retrieves all properties owned by a specific user."""
-    conn = sqlite3.connect("economy.db")
-    cursor = conn.cursor()
-    # Ensure it's selecting rowid
-    cursor.execute("SELECT rowid, city, area, sq_ft, purchase_price FROM land_holdings WHERE user_id = ?", (user_id,))
-    land = cursor.fetchall()
-    conn.close()
-    return land
+  bot.sendMessage(chatId, 🔢 *Number Guessing Game Started!*\n\nI've chosen a number between *1 and 100*.\nUse \/ng <number>\ to guess!, { parse_mode: "Markdown" });
+});
 
-def get_specific_land(purchase_id, user_id):
-    """Fetches a single property to verify ownership before selling."""
-    conn = sqlite3.connect("economy.db")
-    cursor = conn.cursor()
-    cursor.execute("SELECT city, area, sq_ft, purchase_price FROM land_holdings WHERE rowid = ? AND user_id = ?",
-                   (purchase_id, user_id))
-    result = cursor.fetchone()
-    conn.close()
-    return result
+bot.onText(/\/ng (\d+)/, (msg, match) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  const guess = parseInt(match[1]);
 
-def delete_land_record(purchase_id):
-    """Removes a property record after it has been sold."""
-    conn = sqlite3.connect("economy.db")
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM land_holdings WHERE rowid = ?", (purchase_id,))
-    conn.commit()
-    conn.close()
+  if (!activeGames[userId]) {
+    return bot.sendMessage(chatId, "❌ No active game. Start one with /numberguess");
+  }
 
-def transfer_inventory_item(item_name, old_owner_id, new_owner_id):
-    """Moves a car or cricketer from one inventory to another."""
-    conn = sqlite3.connect("economy.db")
-    cursor = conn.cursor()
-    # Using LIMIT 1 ensures we only gift one instance of the item
-    cursor.execute("UPDATE inventory SET user_id = ? WHERE user_id = ? AND item_name = ?",
-                   (new_owner_id, old_owner_id, item_name))
-    success = cursor.rowcount > 0
-    conn.commit()
-    conn.close()
-    return success
+  const game = activeGames[userId];
+  game.attempts += 1;
 
-Ye code kya hai
+  if (guess === game.target) {
+    let reward = 500;
+    if (game.attempts <= 3) reward = 3000;
+    else if (game.attempts <= 7) reward = 1000;
+
+    users[userId].coins += reward;
+    delete activeGames[userId]; 
+
+    bot.sendMessage(chatId, 🎉 *CORRECT!* The number was *${guess}*.\n🎯 Total Attempts: *${game.attempts}*\n💰 Reward Credited: *${reward} Coins*!, { parse_mode: "Markdown" });
+  } else {
+    const hint = guess < game.target ? "Higher ⬆️" : "Lower ⬇️";
+    bot.sendMessage(chatId, ❌ *Wrong Guess!*\n💡 Hint: Try a *${hint}* number.\n⏳ Attempt Count: *${game.attempts}*, { parse_mode: "Markdown" });
+  }
+});
+
+// ==========================================
+// 4. ADMIN CONTROL (Add Coins by Replying)
+// ==========================================
+bot.onText(/\/add (\d+)/, (msg, match) => {
+  const chatId = msg.chat.id;
+  const senderId = msg.from.id;
+  const amount = parseInt(match[1]);
+
+  if (senderId !== ADMIN_ID) {
+    return bot.sendMessage(chatId, "❌ *Access Denied!* Only the Bot Admin can add coins.", { parse_mode: "Markdown" });
+  }
+
+  if (!msg.reply_to_message) {
+    return bot.sendMessage(chatId, "⚠️ Please *reply* to a player's message with /add <amount> to give them coins.", { parse_mode: "Markdown" });
+  }
+
+  const targetUserId = msg.reply_to_message.from.id;
+  
+  if (!users[targetUserId]) {
+    return bot.sendMessage(chatId, "❌ This player is not registered in temporary database yet (Ask them to /start).");
+  }
+
+  users[targetUserId].coins += amount;
+  bot.sendMessage(chatId, added ${amount});
+});
+
+console.log("CL Zone Bot Core Online");
+
+// --- Render Web Service Port Binding ---
+const port = process.env.PORT || 3000;
+const server = http.createServer((req, res) => {
+  res.statusCode = 200;
+  res.setHeader('Content-Type', 'text/plain');
+  res.end('CL Zone Bot is Alive and Running!');
+});
+server.listen(port, () => {
+  console.log(Server standard checking active on port ${port});
+});
