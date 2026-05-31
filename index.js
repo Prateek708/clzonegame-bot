@@ -2,79 +2,70 @@ const TelegramBot = require("node-telegram-bot-api");
 const http = require('http');
 
 const token = process.env.BOT_TOKEN;
-const bot = new TelegramBot(token, { polling: { autoStart: true, params: { timeout: 10 } } });
+const bot = new TelegramBot(token, { polling: true });
 
 const users = {};
-const cricketGames = {};
-const rpsGames = {};
-const tttGames = {};
 
-// Helper: Init User
-function initUser(id, name) {
-    if (!users[id]) users[id] = { name: name, coins: 2000, wins: 0, losses: 0, lastClaim: null, lastSpin: null };
-    return users[id];
-}
-
-// 1. IMPROVED START COMMAND (UI)
-bot.onText(/\/start(?:@\w+)?/, (msg) => {
-    const u = initUser(msg.from.id, msg.from.first_name);
-    let text = `🎮 *Welcome to CL Zone Bot!* 🎮\n\n` +
-               `🎁 *Bonus: 2000 Coins Added!*\n\n` +
-               `*Use these commands to play:*\n` +
-               `🔹 /profile - View status & coins\n` +
-               `🔹 /daily - Claim 1000 Coins (24h)\n` +
-               `🔹 /spin - Spin for 1k-10k coins\n` +
-               `🔹 /leaderboard - Top 15 players\n\n` +
-               `🎮 *Games Available:*\n` +
-               `🎲 /dice <amount>\n` +
-               `🪙 /flip <heads/tails> <amount>\n` +
-               `🔢 /numberguess\n` +
-               `🪨 /rps <amount>\n` +
-               `❌ /ttt <amount>\n` +
-               `🏏 /cricket <amount>`;
-    bot.sendMessage(msg.chat.id, text, { parse_mode: "Markdown" }).catch(()=>{});
+// 1. ORIGINAL UI START
+bot.onText(/\/start/, (msg) => {
+    let text = "🎮 Welcome to CL Zone! 🎮\n\n" +
+               "🔹 /profile - Check stats & coins\n" +
+               "🔹 /daily - Claim 1000 Coins\n" +
+               "🔹 /spin - Lucky Wheel\n" +
+               "🔹 /leaderboard - Top 15\n\n" +
+               "🎮 Games:\n" +
+               "🎲 /dice <amt>\n" +
+               "🪙 /flip <heads/tails> <amt>\n" +
+               "🔢 /numberguess\n" +
+               "🪨 /rps <amt>\n" +
+               "❌ /ttt <amt>\n" +
+               "🏏 /cricket <amt>";
+    bot.sendMessage(msg.chat.id, text);
 });
 
-// 2. INTERACTIVE GAME LOBBIES (Cricket, RPS, TTT)
-bot.onText(/\/cricket(?:\s+(\d+))?/, (msg, match) => {
-    const cid = msg.chat.id;
-    cricketGames[cid] = { p1: { id: msg.from.id, name: msg.from.first_name }, amt: match[1] || 0 };
-    bot.sendMessage(cid, `🏏 *Hand Cricket Lobby*\n👤 Host: ${msg.from.first_name}\n💰 Bet: ${match[1] || "Free"}`, {
-        reply_markup: { inline_keyboard: [[{ text: "🤝 Join Match", callback_data: "c_join" }]] }
-    });
+// 2. PROFILE & DAILY
+bot.onText(/\/profile/, (msg) => {
+    if (!users[msg.from.id]) users[msg.from.id] = { name: msg.from.first_name, coins: 2000, wins: 0, losses: 0 };
+    const u = users[msg.from.id];
+    bot.sendMessage(msg.chat.id, `👤 NAME: ${u.name}\n💰 COINS: ${u.coins}\n🏆 WINS: ${u.wins}\n📉 LOSSES: ${u.losses}`);
 });
 
-bot.onText(/\/rps(?:\s+(\d+))?/, (msg, match) => {
-    const cid = msg.chat.id;
-    rpsGames[cid] = { p1: { id: msg.from.id, name: msg.from.first_name }, amt: match[1] || 0 };
-    bot.sendMessage(cid, `🪨✂️📄 *RPS Lobby*`, {
-        reply_markup: { inline_keyboard: [[{ text: "🤖 Vs Bot", callback_data: "r_bot" }, { text: "👥 PvP", callback_data: "r_pvp" }]] }
-    });
+bot.onText(/\/daily/, (msg) => {
+    if (!users[msg.from.id]) users[msg.from.id] = { name: msg.from.first_name, coins: 2000, wins: 0, losses: 0 };
+    users[msg.from.id].coins += 1000;
+    bot.sendMessage(msg.chat.id, "🎁 1000 Coins added!");
 });
 
-bot.onText(/\/ttt(?:\s+(\d+))?/, (msg, match) => {
-    const cid = msg.chat.id;
-    tttGames[cid] = { p1: { id: msg.from.id, name: msg.from.first_name }, amt: match[1] || 0 };
-    bot.sendMessage(cid, `❌⭕ *TTT Lobby*`, {
-        reply_markup: { inline_keyboard: [[{ text: "🤖 Vs Bot", callback_data: "t_bot" }, { text: "👥 PvP", callback_data: "t_pvp" }]] }
-    });
+// 3. DICE
+bot.onText(/\/dice (\d+)/, (msg, match) => {
+    const amt = parseInt(match[1]);
+    if (!users[msg.from.id]) users[msg.from.id] = { name: msg.from.first_name, coins: 2000, wins: 0, losses: 0 };
+    const u = users[msg.from.id];
+    if (u.coins < amt) return bot.sendMessage(msg.chat.id, "❌ Low balance!");
+    const roll = Math.floor(Math.random() * 6) + 1;
+    roll >= 4 ? (u.coins += amt, u.wins++) : (u.coins -= amt, u.losses++);
+    bot.sendMessage(msg.chat.id, `🎲 Roll: ${roll} | ${roll >= 4 ? 'WIN' : 'LOSS'}`);
 });
 
-// 3. CALLBACK ROUTER (Handle buttons)
+// 4. GAME LOBBIES (Lobby Message)
+bot.onText(/\/cricket(?:\s+(\d+))?/, (msg) => {
+    bot.sendMessage(msg.chat.id, "🏏 Cricket Lobby", { reply_markup: { inline_keyboard: [[{text: "Join Match", callback_data: "c_join"}]] } });
+});
+
+bot.onText(/\/rps(?:\s+(\d+))?/, (msg) => {
+    bot.sendMessage(msg.chat.id, "🪨 RPS Lobby", { reply_markup: { inline_keyboard: [[{text: "Vs Bot", callback_data: "r_bot"}]] } });
+});
+
+bot.onText(/\/ttt(?:\s+(\d+))?/, (msg) => {
+    bot.sendMessage(msg.chat.id, "❌ TTT Lobby", { reply_markup: { inline_keyboard: [[{text: "Vs Bot", callback_data: "t_bot"}]] } });
+});
+
+// 5. CALLBACKS (Game Logic)
 bot.on('callback_query', (q) => {
-    const cid = q.message.chat.id;
-    const data = q.data;
-
-    if (data === "c_join") {
-        bot.sendMessage(cid, "🏏 *Match Started!* (Cricket Logic Loaded)");
-    } else if (data === "r_bot" || data === "r_pvp") {
-        bot.sendMessage(cid, "🪨✂️📄 *RPS Game Started!* Make your move.");
-    } else if (data === "t_bot" || data === "t_pvp") {
-        bot.sendMessage(cid, "❌⭕ *Tic Tac Toe Started!*");
-    }
-    bot.answerCallbackQuery(q.id).catch(()=>{});
+    if (q.data === "c_join") bot.sendMessage(q.message.chat.id, "🏏 Match Started! Type /bat <num> to play.");
+    if (q.data === "r_bot") bot.sendMessage(q.message.chat.id, "🪨 RPS Game Started!");
+    if (q.data === "t_bot") bot.sendMessage(q.message.chat.id, "❌ TTT Game Started!");
+    bot.answerCallbackQuery(q.id);
 });
 
-// Simple web server for Render
-const port = process.env.PORT || 3000;
-http.createServer((req, res) => res.end('Engine Active')).listen(port);
+http.createServer((req, res) => res.end('Engine Active')).listen(process.env.PORT || 3000);
