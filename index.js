@@ -288,3 +288,32 @@ const server = http.createServer((req, res) => {
 server.listen(port, () => {
   console.log(Server standard checking active on port ${port});
 });
+
+// ==========================================
+// ADMIN CONTROL: Remove Coins
+// ==========================================
+bot.onText(/\/remove (\d+)/, (msg, match) => {
+  const chatId = msg.chat.id;
+  const senderId = msg.from.id;
+  const amount = parseInt(match[1]);
+
+  if (senderId !== ADMIN_ID) {
+    return bot.sendMessage(chatId, "❌ *Access Denied!* Only the Bot Admin can remove coins.", { parse_mode: "Markdown" });
+  }
+
+  if (!msg.reply_to_message) {
+    return bot.sendMessage(chatId, "⚠️ Please *reply* to a player's message with /remove <amount> to deduct coins.", { parse_mode: "Markdown" });
+  }
+
+  const targetUserId = msg.reply_to_message.from.id;
+  
+  if (!users[targetUserId]) {
+    return bot.sendMessage(chatId, "❌ This player is not registered.");
+  }
+
+  // Coins deduct karna aur negative na hone dena
+  users[targetUserId].coins = Math.max(0, users[targetUserId].coins - amount);
+  
+  bot.sendMessage(chatId, `✅ Successfully deducted ${amount} coins from ${users[targetUserId].name || "the user"}.`);
+});
+
