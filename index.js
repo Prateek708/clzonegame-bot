@@ -253,33 +253,38 @@ bot.sendMessage(chatId, ❌ *Wrong Guess!*\n💡 Hint: Try a *${hint}* number.\n
 // ==========================================
 // 4. ADMIN CONTROL (Add Coins by Replying)
 // ==========================================
-bot.onText(/\/remove (\d+)/, (msg, match) => {
-    const chatId = msg.chat.id;
-    const senderId = msg.from.id;
-    const amount = parseInt(match[1]);
+bot.onText(/\/add (\d+)/, (msg, match) => {
+  const chatId = msg.chat.id;
+  const senderId = msg.from.id;
+  const amount = parseInt(match[1]);
 
-    if (senderId != ADMIN_ID) {
-        return bot.sendMessage(chatId, "❌ Access Denied!");
-    }
+  if (senderId !== ADMIN_ID) {
+    return bot.sendMessage(chatId, "❌ *Access Denied!* Only the Bot Admin can add coins.", { parse_mode: "Markdown" });
+  }
 
-    if (!msg.reply_to_message) {
-        return bot.sendMessage(chatId, "⚠️ Reply to a player's message with /remove <amount>");
-    }
+  if (!msg.reply_to_message) {
+    return bot.sendMessage(chatId, "⚠️ Please *reply* to a player's message with /add <amount> to give them coins.", { parse_mode: "Markdown" });
+  }
 
-    const targetUserId = msg.reply_to_message.from.id;
+  const targetUserId = msg.reply_to_message.from.id;
+  
+  if (!users[targetUserId]) {
+    return bot.sendMessage(chatId, "❌ This player is not registered in temporary database yet (Ask them to /start).");
+  }
 
-    if (!users[targetUserId]) {
-        return bot.sendMessage(chatId, "❌ User not found in database.");
-    }
+  users[targetUserId].coins += amount;
+  bot.sendMessage(chatId, added ${amount});
+});
 
-    users[targetUserId].coins -= amount;
+console.log("CL Zone Bot Core Online");
 
-    if (users[targetUserId].coins < 0) {
-        users[targetUserId].coins = 0;
-    }
-
-    bot.sendMessage(
-        chatId,
-        `✅ Successfully deducted ${amount} coins from ${users[targetUserId].name}`
-    );
+// --- Render Web Service Port Binding ---
+const port = process.env.PORT || 3000;
+const server = http.createServer((req, res) => {
+  res.statusCode = 200;
+  res.setHeader('Content-Type', 'text/plain');
+  res.end('CL Zone Bot is Alive and Running!');
+});
+server.listen(port, () => {
+  console.log(Server standard checking active on port ${port});
 });
