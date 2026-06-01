@@ -1,3 +1,4 @@
+aw
 const TelegramBot = require("node-telegram-bot-api");
 const http = require('http');
 
@@ -379,4 +380,8 @@ bot.onText(/^\/myachievement$/i, (msg) => {
     });
 
     bot.sendMessage(msg.chat.id, text);
+});
+
+bot.onText(/\/test/, (msg) => {
+    bot.sendMessage(msg.chat.id, "Test Working");
 });
