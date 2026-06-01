@@ -259,7 +259,7 @@ bot.onText(/\/add (\d+)/, (msg, match) => {
   const senderId = msg.from.id;
   const amount = parseInt(match[1]);
 
-  if (senderId !== ADMIN_ID) {
+  if (!ADMIN_ID.includes(senderId)) {
     return bot.sendMessage(chatId, "❌ *Access Denied!* Only the Bot Admin can add coins.", { parse_mode: "Markdown" });
   }
 
@@ -299,7 +299,7 @@ bot.onText(/\/remove (\d+)/, (msg, match) => {
   const amount = parseInt(match[1]);
 
   // 1. Sirf Admin check
-  if (senderId !== ADMIN_ID) {
+  if (!ADMIN_ID.includes(senderId)) {
     return bot.sendMessage(chatId, "❌ *Access Denied!* Only the Bot Admin can remove coins.", { parse_mode: "Markdown" });
   }
 
