@@ -116,3 +116,8 @@ bot.onText(/\/myachievement/, (msg) => {
 // 5. SERVER BINDING (MUST BE LAST)
 const port = process.env.PORT || 3000;
 http.createServer((req, res) => res.end('CL Zone Bot is Alive!')).listen(port);
+
+bot.onText(/\/test/, (msg) => {
+  bot.sendMessage(msg.chat.id, "Test Working ✅");
+});
+
