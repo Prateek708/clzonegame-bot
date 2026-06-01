@@ -247,9 +247,8 @@ bot.sendMessage(chatId, `🎉 *CORRECT!* The number was *${guess}*.\n🎯 Total 
 
 } else {
 const hint = guess < game.target ? "Higher ⬆️" : "Lower ⬇️";
-bot.sendMessage(chatId, ❌ *Wrong Guess!*\n💡 Hint: Try a *${hint}* number.\n⏳ Attempt Count: *${game.attempts}*, { parse_mode: "Markdown" });
+bot.sendMessage(chatId, `❌ *Wrong Guess!*\n💡 Hint: Try a *${hint}* number.\n⏳ Attempt Count: *${game.attempts}*`, { parse_mode: "Markdown" });
 }
-});
 
 // ==========================================
 // 4. ADMIN CONTROL (Add Coins by Replying)
