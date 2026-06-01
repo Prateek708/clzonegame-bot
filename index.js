@@ -5,7 +5,7 @@ const token = process.env.BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
 
 // --- SET YOUR TELEGRAM USER ID HERE ---
-const ADMIN_ID = 1315564307; 8708547223;
+const ADMIN_ID = [1315564307, 8708547223];
 
 // In-Memory Database (Temporary until MongoDB setup)
 const users = {};
