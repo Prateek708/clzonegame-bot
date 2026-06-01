@@ -52,6 +52,7 @@ welcomeText += Use these commands to play:\n +
 🪙 /flip <heads/tails> <amount> (Limit: 100-30k)\n +
 🔢 /numberguess - Start Number Guessing Game\n +
 👉 /ng <number> - Make your guess (1-100);
+✨ /myachievement - Your Achievement 
 
 bot.sendMessage(chatId, welcomeText, { parse_mode: "Markdown" });
 });
@@ -319,4 +320,63 @@ bot.onText(/\/remove (\d+)/, (msg, match) => {
 
   // 5. Success Message
   bot.sendMessage(chatId, `✅ Successfully deducted ${amount} coins from ${users[targetUserId].name || "the user"}.`);
+});
+
+// Global achievements
+if (!global.achievements) global.achievements = [];
+
+// Add Achievement (Admin Only)
+bot.onText(/^\/addachievement (.+)$/i, (msg, match) => {
+    const userId = msg.from.id;
+
+    if (!ADMINS.includes(userId)) {
+        return bot.sendMessage(msg.chat.id, "❌ Admin only command.");
+    }
+
+    global.achievements.push(match[1]);
+
+    bot.sendMessage(
+        msg.chat.id,
+        `🏆 Achievement Added For Everyone!\n\n${match[1]}`
+    );
+});
+
+// Remove Achievement (Admin Only)
+bot.onText(/^\/rmachievement (\d+)$/i, (msg, match) => {
+    const userId = msg.from.id;
+
+    if (!ADMINS.includes(userId)) {
+        return bot.sendMessage(msg.chat.id, "❌ Admin only command.");
+    }
+
+    const index = parseInt(match[1]) - 1;
+
+    if (!global.achievements[index]) {
+        return bot.sendMessage(msg.chat.id, "❌ Achievement not found.");
+    }
+
+    const removed = global.achievements.splice(index, 1)[0];
+
+    bot.sendMessage(
+        msg.chat.id,
+        `🗑 Achievement Removed!\n\n${removed}`
+    );
+});
+
+// My Achievements
+bot.onText(/^\/myachievement$/i, (msg) => {
+    if (!global.achievements.length) {
+        return bot.sendMessage(
+            msg.chat.id,
+            "🏆 No achievements available."
+        );
+    }
+
+    let text = "🏆 ACHIEVEMENTS\n\n";
+
+    global.achievements.forEach((a, i) => {
+        text += `${i + 1}. ${a}\n`;
+    });
+
+    bot.sendMessage(msg.chat.id, text);
 });
