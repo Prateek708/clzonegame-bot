@@ -274,8 +274,7 @@ bot.onText(/\/add (\d+)/, (msg, match) => {
   }
 
   users[targetUserId].coins += amount;
-  bot.sendMessage(chatId, added ${amount});
-});
+   bot.sendMessage(chatId, `✅ Successfully added ${amount} coins`);
 
 console.log("CL Zone Bot Core Online");
 
