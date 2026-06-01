@@ -7,54 +7,36 @@ const bot = new TelegramBot(token, { polling: true });
 // --- SET YOUR TELEGRAM USER ID HERE ---
 const ADMIN_ID = [1315564307, 8708547223];
 
-// In-Memory Database (Temporary until MongoDB setup)
+// In-Memory Database
 const users = {};
 const activeGames = {};
+global.achievements = [];
 
 // Helper function to initialize user data
 function initUser(userId, firstName) {
-if (!users[userId]) {
-users[userId] = {
-name: firstName || "Player",
-coins: 2000,
-wins: 0,
-losses: 0,
-lastClaim: null,
-lastSpin: null
-};
-return true;
-}
-return false;
-}
-
-// ==========================================
-// 1. START COMMAND & REGISTRATION LOCK
-// ==========================================
-bot.onText(//start/, (msg) => {
-const chatId = msg.chat.id;
-const userId = msg.from.id;
-const firstName = msg.from.first_name;
-
-const isNew = initUser(userId, firstName);
-
-let welcomeText = 🎮 Welcome to Gaming Space! 🎮\n\n;
-if (isNew) {
-welcomeText += 🎁 Thanks for starting! Your reward: 2000 Coins 🎁\n\n;
+    if (!users[userId]) {
+        users[userId] = {
+            name: firstName || "Player",
+            coins: 2000,
+            wins: 0,
+            losses: 0,
+            lastClaim: null,
+            lastSpin: null
+        };
+        return true;
+    }
+    return false;
 }
 
-welcomeText += Use these commands to play:\n +
-🔹 /profile - View status & coins\n +
-🔹 /daily - Claim 1000 Coins (24h)\n +
-🔹 /spin - Spin for 1k-10k coins (24h)\n +
-🔹 /leaderboard - View Top 15 players\n\n +
-🎮 Games Available: \n +
-🎲 /dice <amount> (Limit: 100-20k)\n +
-🪙 /flip <heads/tails> <amount> (Limit: 100-30k)\n +
-🔢 /numberguess - Start Number Guessing Game\n +
-👉 /ng <number> - Make your guess (1-100);
-✨ /myachievement - Your Achievement
-
-bot.sendMessage(chatId, welcomeText, { parse_mode: "Markdown" });
+// 1. START COMMAND & REGISTRATION
+bot.onText(/\/start/, (msg) => {
+    const isNew = initUser(msg.from.id, msg.from.first_name);
+    let welcomeText = 🎮 *Welcome to Gaming Space!* 🎮\n\n;
+    if (isNew) {
+        welcomeText += 🫶🏻 *Thanks for starting, You are rewarded with 2000 Coins* 🎁\n\n;
+    }
+    welcomeText += Use these commands to play:\n🔹 /profile - View status & coins\n🔹 /daily - Claim 1000 Coins\n🔹 /spin - Spin for 1k-10k coins\n🔹 /leaderboard - View Top 15 players\n\n🎮 *Games Available:* \n🎲 /dice <amount>\n🪙 /flip <heads/tails> <amount>\n🔢 /numberguess\n👉 /ng <number>\n✨ /myachievement;
+    bot.sendMessage(msg.chat.id, welcomeText, { parse_mode: "Markdown" });
 });
 
 // ==========================================
@@ -137,7 +119,6 @@ parse_mode: "Markdown"
 
 }
 });
-
 bot.onText(//leaderboard/, (msg) => {
 const chatId = msg.chat.id;
 const sortedPlayers = Object.keys(users)
@@ -251,7 +232,7 @@ const hint = guess < game.target ? "Higher ⬆️" : "Lower ⬇️";
 bot.sendMessage(chatId, ❌ Wrong Guess!\n💡 Hint: Try a ${hint} number.\n⏳ Attempt Count: ${game.attempts}, { parse_mode: "Markdown" });
 }
 
-//  4. ADMIN & ACHIEVEMENTS
+// 4. ADMIN & ACHIEVEMENTS
 bot.onText(/\/add (\d+)/, (msg, match) => {
     if (!ADMIN_ID.includes(msg.from.id) || !msg.reply_to_message) return;
     users[msg.reply_to_message.from.id].coins += parseInt(match[1]);
