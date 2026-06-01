@@ -290,30 +290,33 @@ server.listen(port, () => {
 });
 
 // ==========================================
-// ADMIN CONTROL: Remove Coins
+// 4. ADMIN CONTROL (Remove Coins by Replying)
 // ==========================================
 bot.onText(/\/remove (\d+)/, (msg, match) => {
   const chatId = msg.chat.id;
   const senderId = msg.from.id;
   const amount = parseInt(match[1]);
 
+  // 1. Sirf Admin check
   if (senderId !== ADMIN_ID) {
     return bot.sendMessage(chatId, "❌ *Access Denied!* Only the Bot Admin can remove coins.", { parse_mode: "Markdown" });
   }
 
+  // 2. Reply check
   if (!msg.reply_to_message) {
     return bot.sendMessage(chatId, "⚠️ Please *reply* to a player's message with /remove <amount> to deduct coins.", { parse_mode: "Markdown" });
   }
 
   const targetUserId = msg.reply_to_message.from.id;
   
+  // 3. User Database check
   if (!users[targetUserId]) {
-    return bot.sendMessage(chatId, "❌ This player is not registered.");
+    return bot.sendMessage(chatId, "❌ This player is not registered in the database.");
   }
 
-  // Coins deduct karna aur negative na hone dena
+  // 4. Deduction Logic (Math.max(0, ...) se balance 0 se niche nahi jayega)
   users[targetUserId].coins = Math.max(0, users[targetUserId].coins - amount);
-  
+
+  // 5. Success Message
   bot.sendMessage(chatId, `✅ Successfully deducted ${amount} coins from ${users[targetUserId].name || "the user"}.`);
 });
-
