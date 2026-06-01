@@ -1,15 +1,11 @@
 {
   "name": "clzonegame-bot",
   "version": "2.0.0",
-  "description": "Gaming Bot for Telegram with Shop, Achievements, and Games",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
     "telegraf": "^4.15.3"
-  },
-  "keywords": ["telegram", "bot", "game", "gaming", "coins"],
-  "author": "Prateek",
-  "license": "MIT"
+  }
 }
