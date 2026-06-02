@@ -1,16 +1,11 @@
 {
-  "name": "telegram-bot",
+  "name": "gaming-bot",
   "version": "1.0.0",
-  "description": "My Gaming Bot",
   "main": "index.js",
-  "type": "module",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
     "node-telegram-bot-api": "^0.66.0"
-  },
-  "engines": {
-    "node": ">=18.0.0"
   }
 }
